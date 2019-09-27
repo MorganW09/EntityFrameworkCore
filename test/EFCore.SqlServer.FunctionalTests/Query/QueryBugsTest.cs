@@ -6942,6 +6942,82 @@ ORDER BY [t0].[Id], [t1].[Id], [t1].[Id0]");
 
         #endregion
 
+        #region Bug13517
+
+        [Fact]
+        public void Query_filter_with_pk_fk_optimization_bug_13517()
+        {
+            using var _ = CreateDatabase13517();
+            using var context = new Bug13517Context(_options);
+
+            context.Entities.Select(s =>
+                new Bug13517EntityDto
+                {
+                    Id = s.Id,
+                    RefEntity = s.RefEntity == null
+                        ? null
+                        : new Bug13517RefEntityDto { Id = s.RefEntity.Id, Public = s.RefEntity.Public },
+                    RefEntityId = s.RefEntityId
+                }).Single(p => p.Id == 1);
+        }
+
+        private SqlServerTestStore CreateDatabase13517()
+            => CreateTestStore(
+                () => new Bug13517Context(_options),
+                context =>
+                {
+                    var refEntity = new Bug13517RefEntity { Public = false };
+                    context.RefEntities.Add(refEntity);
+                    context.Entities.Add(new Bug13517Entity { RefEntity = refEntity });
+                    context.SaveChanges();
+
+                    ClearLog();
+                });
+
+        public class Bug13517Entity
+        {
+            public int Id { get; set; }
+            public int? RefEntityId { get; set; }
+            public Bug13517RefEntity RefEntity { get; set; }
+        }
+
+        public class Bug13517RefEntity
+        {
+            public int Id { get; set; }
+            public bool Public { get; set; }
+        }
+
+        public class Bug13517EntityDto
+        {
+            public int Id { get; set; }
+            public int? RefEntityId { get; set; }
+            public Bug13517RefEntityDto RefEntity { get; set; }
+        }
+
+        public class Bug13517RefEntityDto
+        {
+            public int Id { get; set; }
+            public bool Public { get; set; }
+        }
+
+        private class Bug13517Context : DbContext
+        {
+            public DbSet<Bug13517Entity> Entities { get; set; }
+            public DbSet<Bug13517RefEntity> RefEntities { get; set; }
+
+            protected override void OnModelCreating(ModelBuilder modelBuilder)
+            {
+                modelBuilder.Entity<Bug13517RefEntity>().HasQueryFilter(f => f.Public == true);
+            }
+
+            public Bug13517Context(DbContextOptions options)
+                : base(options)
+            {
+            }
+        }
+
+        #endregion
+
         private DbContextOptions _options;
 
         private SqlServerTestStore CreateTestStore<TContext>(
