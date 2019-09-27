@@ -8,7 +8,7 @@ namespace Microsoft.EntityFrameworkCore.Query.SqlExpressions
 {
     public class SqlFragmentExpression : SqlExpression
     {
-        internal SqlFragmentExpression(string sql)
+        public SqlFragmentExpression(string sql)
             : base(typeof(string), null)
         {
             Sql = sql;
